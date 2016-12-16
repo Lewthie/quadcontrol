@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+
+<launch>
+  
+  <!--launch-prefix="gdb -ex run ++args"-->
+
+  <node pkg="offboard_control" type="offboard_control_node" name="offboard_control" output="screen">
+    
+
+  </node>
+</launch>
