@@ -46,14 +46,9 @@ geometry_msgs::PoseStamped current_goal;
 // bool turning, go = false;
 
 double roll, pitch, yaw;
-//double theta, psi, heading, diff;
 double goal_roll, goal_pitch, goal_yaw;
 double global_x,global_y,global_z, global_mag;
-// double current_goal_x, current_goal_y;
-// double head_x,head_y,head_z, head_mag;
 double goal_x, goal_y, goal_z, goal_mag;
-// double dum_x, dum_y, dum_z, dum_mag;
-// double true_x, true_y, true_z, true_mag;
 double velx_cmd, vely_cmd,velz_cmd;
 double wx_cmd, wy_cmd, wz_cmd;
 std::string base_link_frame_, base_stabilized_frame_, world_frame_;
@@ -118,8 +113,10 @@ bool isAtGoal()
     // if (goal_x != global_x || goal_y != global_y || goal_z != global_z) return false;
     // return true;
 
-    if (sqrt(pow(goal_x - global_x, 2.0) + pow(goal_y - global_y, 2.0)) > 0.2) return false;
-    else return true;
+    // if (sqrt(pow(goal_x - global_x, 2.0) + pow(goal_y - global_y, 2.0)) > 0.2) return false;
+    // else return true;
+
+    return (sqrt(pow(goal_x - global_x, 2.0) + pow(goal_y - global_y, 2.0)) < 0.2);    
 }
 
 double turn_state()
