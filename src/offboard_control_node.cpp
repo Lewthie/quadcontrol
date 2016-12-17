@@ -122,43 +122,16 @@ bool isAtGoal()
     else return true;
 }
 
-double head_diff()
-{
-    // double head_x,head_y,head_z, head_mag = 0.0;
-    // double theta = 0.0;
-    // double diff = 0.0;
-    // //bool turn = true;
-    // //std::cout << "TURNING!" << std::endl;
-    // // Determine Heading Vector (Quadrotor to Target)
-    // head_x = goal_x - global_x;
-    // head_y = goal_y - global_y;
-
-    // head_mag = sqrt(pow(head_x, 2.0) + pow(head_y, 2.0));
-
-    // theta = acos(head_x / head_mag);
-    // if (head_y < 0.0) theta *= -1.0;
-
-    // diff = fabs((fabs(yaw) - fabs(theta)));
-
-    // std::cout << "yaw: \t\t\t" << yaw << std::endl;
-    // std::cout << "required heading: \t" << theta << std::endl;
-    // std::cout << "difference: \t\t" << diff << std::endl;
-
-    // return diff;       
-}
-
 double turn_state()
 {
     // how to decide direction of turn
-    // double diff = 0.0;
     if (isAtGoal()) return 0.0;
 
     //diff = head_diff();
     double head_x,head_y,head_z, head_mag = 0.0;
     double theta = 0.0;
     double diff = 0.0;
-    //bool turn = true;
-    //std::cout << "TURNING!" << std::endl;
+
     // Determine Heading Vector (Quadrotor to Target)
     head_x = goal_x - global_x;
     head_y = goal_y - global_y;
@@ -170,6 +143,7 @@ double turn_state()
 
     // calculate signed difference
     diff = atan2(sin(theta - yaw), cos(theta - yaw));
+
     // std::cout << "yaw: \t\t\t" << yaw << std::endl;
     // std::cout << "required heading: \t" << theta << std::endl;
     // std::cout << "difference: \t\t" << diff << std::endl;
@@ -180,8 +154,7 @@ double turn_state()
         if (diff > 0.0) return 0.1;
         else if (diff < 0.0) return -0.1; 
     }    
-    else return 0.0;
-    
+    else return 0.0;    
 
 }
 
@@ -213,7 +186,6 @@ int main(int argc, char **argv)
     goal_y = global_y;
     goal_z = global_z;
 
-// #ifdef HECTOR
     // wait for connection to the simulator, and wait for ten packages to arrive
     while(ros::ok() && current_state.header.seq > 10)
     {
@@ -223,8 +195,6 @@ int main(int argc, char **argv)
 
     //define fixed velocity commands to be sent to the sim
     geometry_msgs::Twist vel;
-    //  vel.header.stamp = ros::Time::now();
-
     
     vel.linear.x = 0.0;
     vel.linear.y = 0.0;
@@ -236,9 +206,7 @@ int main(int argc, char **argv)
     while(ros::ok())
     {
 
-	// vel.header.frame_id = base_stabilized_frame_;
-   	// vel.header.stamp = ros::Time::now();
-
+        // ensure appropriate altitude
     	if (global_z >= 1.0)
         {
           //  vel.header.frame_id = base_stabilized_frame_;
@@ -254,20 +222,10 @@ int main(int argc, char **argv)
                 
         }
 
-
-        // if (!isAtGoal())
-        // {
-
             wz_cmd = turn_state();
             velx_cmd = go_state();
 
-        // } 
-        // else
-        // {
-        //     wz_cmd = 0.0;
-        //     velx_cmd = 0.0;
-        // }
-        
+        // Publish velocity msgs
         local_vel_pub.publish(vel);
 
 
