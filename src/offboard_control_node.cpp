@@ -47,8 +47,8 @@ geometry_msgs::PoseStamped current_goal;
 
 double roll, pitch, yaw;
 double goal_roll, goal_pitch, goal_yaw;
-double global_x,global_y,global_z, global_mag;
-double goal_x, goal_y, goal_z, goal_mag;
+double global_x,global_y,global_z;
+double goal_x, goal_y, goal_z;
 double velx_cmd, vely_cmd,velz_cmd;
 double wx_cmd, wy_cmd, wz_cmd;
 std::string base_link_frame_, base_stabilized_frame_, world_frame_;
@@ -153,9 +153,9 @@ int main(int argc, char **argv)
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(15.0);
 
-    goal_x = global_x;
-    goal_y = global_y;
-    goal_z = global_z;
+    // goal_x = global_x;
+    // goal_y = global_y;
+    // goal_z = global_z;
 
     // wait for connection to the simulator, and wait for ten packages to arrive
     while(ros::ok() && current_state.header.seq > 10)
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
     vel.linear.z = 0.2;
     vel.angular.x = 0.0;
     vel.angular.y = 0.0;
-    vel.angular.z = 0.0; 
+    vel.angular.z = 0.0;
 
     while(ros::ok())
     {
