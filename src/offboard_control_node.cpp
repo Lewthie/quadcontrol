@@ -110,24 +110,17 @@ void goal_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 bool isAtGoal()
 {
-    // if (goal_x != global_x || goal_y != global_y || goal_z != global_z) return false;
-    // return true;
-
-    // if (sqrt(pow(goal_x - global_x, 2.0) + pow(goal_y - global_y, 2.0)) > 0.2) return false;
-    // else return true;
 
     return (sqrt(pow(goal_x - global_x, 2.0) + pow(goal_y - global_y, 2.0)) < 0.2);    
 }
 
 double turn_state()
 {
-    // how to decide direction of turn
-    if (isAtGoal()) return 0.0;
 
-    //diff = head_diff();
+    // Determines correct direction of yaw
+
     double head_x,head_y,head_z, head_mag = 0.0;
     double theta = 0.0;
-    double diff = 0.0;
 
     // Determine Heading Vector (Quadrotor to Target)
     head_x = goal_x - global_x;
@@ -139,33 +132,14 @@ double turn_state()
     if (head_y < 0.0) theta *= -1.0;
 
     // calculate signed difference
-    diff = atan2(sin(theta - yaw), cos(theta - yaw));
+    return atan2(sin(theta - yaw), cos(theta - yaw)); 
 
-    // std::cout << "yaw: \t\t\t" << yaw << std::endl;
-    // std::cout << "required heading: \t" << theta << std::endl;
-    // std::cout << "difference: \t\t" << diff << std::endl;
-
-    // decide quickest yaw direction
-    if (fabs(diff) > 0.08)
-    {
-        if (diff > 0.0) return 0.1;
-        else if (diff < 0.0) return -0.1; 
-    }    
-    else return 0.0;    
-
-}
-
-double go_state()
-{
-    // if heading not correct OR distance is less than 0.2, return 0
-    if (wz_cmd != 0.0 || isAtGoal()) return 0.0;
-
-    // else move return 0.2
-    else return 0.2; 
 }
 
 int main(int argc, char **argv)
 {
+
+    double diff = 0.0;
 
     ros::init(argc, argv, "offb_node");
     ros::NodeHandle nh;
@@ -219,8 +193,26 @@ int main(int argc, char **argv)
                 
         }
 
-            wz_cmd = turn_state();
-            velx_cmd = go_state();
+        if (!isAtGoal())
+        {
+            diff = turn_state();
+
+            if (fabs(diff) >= 0.08)
+            {
+                velx_cmd = 0.0;
+                wz_cmd =  (diff > 0.0) ? 0.1 : -0.1;
+            }
+            else
+            {
+                velx_cmd = 0.2;
+                wz_cmd = 0.0;
+            }  
+        }
+        else 
+        {
+            velx_cmd = 0.0;
+            wz_cmd = 0.0;
+        }
 
         // Publish velocity msgs
         local_vel_pub.publish(vel);
@@ -232,16 +224,11 @@ int main(int argc, char **argv)
         // std::cout << " *** heading = " << theta << std::endl;
         // std::cout << " *** goal x: " << goal_x << " goal y: " << goal_y << " goal z: " << goal_z << " ***"  << std::endl;
         // std::cout << " *** global x: " << global_x << " global y: " << global_y << " global z: " << global_z << " ***" << std::endl;
-        // // std::cout << " *** head x: " << head_x << " head y: " << head_y << " head z: " << head_z << " ***" << std::endl;
-        // // std::cout << " *** global mag: " << global_mag << std::endl;
-        // // std::cout << " *** goal mag: " << goal_mag << std::endl;
-        // // std::cout << " *** dum mag: " << dum_mag << std::endl;
-
-
-
-        //std::cout << "yaw: \t\t\t" << yaw << std::endl;
-        //std::cout << "required heading: \t" << theta << std::endl;
-        // std::cout << "difference: \t\t" << diff << std::endl;
+        // std::cout << " *** head x: " << head_x << " head y: " << head_y << " head z: " << head_z << " ***" << std::endl;
+        // std::cout << " *** global mag: " << global_mag << std::endl;
+        // std::cout << " *** goal mag: " << goal_mag << std::endl;
+        // std::cout << " *** dum mag: " << dum_mag << std::endl;
+        // std::cout << isAtGoal() << std::endl;
 
         // *** DEBUG STUFF - DO NOT DELETE ***        
 
