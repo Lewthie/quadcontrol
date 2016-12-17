@@ -151,6 +151,7 @@ double turn_state()
 {
     // how to decide direction of turn
     // double diff = 0.0;
+    if (isAtGoal()) return 0.0;
 
     //diff = head_diff();
     double head_x,head_y,head_z, head_mag = 0.0;
@@ -169,9 +170,9 @@ double turn_state()
 
     // calculate signed difference
     diff = atan2(sin(theta - yaw), cos(theta - yaw));
-    std::cout << "yaw: \t\t\t" << yaw << std::endl;
-    std::cout << "required heading: \t" << theta << std::endl;
-    std::cout << "difference: \t\t" << diff << std::endl;
+    // std::cout << "yaw: \t\t\t" << yaw << std::endl;
+    // std::cout << "required heading: \t" << theta << std::endl;
+    // std::cout << "difference: \t\t" << diff << std::endl;
 
     // decide quickest yaw direction
     if (fabs(diff) > 0.08)
@@ -180,13 +181,14 @@ double turn_state()
         else if (diff < 0.0) return -0.1; 
     }    
     else return 0.0;
+    
 
 }
 
 double go_state()
 {
     // if heading not correct OR distance is less than 0.2, return 0
-    if (turn_state() != 0.0) return 0.0;
+    if (wz_cmd != 0.0 || isAtGoal()) return 0.0;
 
     // else move return 0.2
     else return 0.2; 
@@ -253,18 +255,18 @@ int main(int argc, char **argv)
         }
 
 
-        if (!isAtGoal())
-        {
+        // if (!isAtGoal())
+        // {
 
             wz_cmd = turn_state();
             velx_cmd = go_state();
 
-        } 
-        else
-        {
-            wz_cmd = 0.0;
-            velx_cmd = 0.0;
-        }
+        // } 
+        // else
+        // {
+        //     wz_cmd = 0.0;
+        //     velx_cmd = 0.0;
+        // }
         
         local_vel_pub.publish(vel);
 
@@ -273,8 +275,8 @@ int main(int argc, char **argv)
 
         // std::cout << " *** abs x: " << abs(goal_x - global_x) << " abs y: " << abs(goal_y - global_y) << " abs z: " << abs(goal_z - global_z) << " ***" <<std::endl;
         // std::cout << " *** heading = " << theta << std::endl;
-        std::cout << " *** goal x: " << goal_x << " goal y: " << goal_y << " goal z: " << goal_z << " ***"  << std::endl;
-        std::cout << " *** global x: " << global_x << " global y: " << global_y << " global z: " << global_z << " ***" << std::endl;
+        // std::cout << " *** goal x: " << goal_x << " goal y: " << goal_y << " goal z: " << goal_z << " ***"  << std::endl;
+        // std::cout << " *** global x: " << global_x << " global y: " << global_y << " global z: " << global_z << " ***" << std::endl;
         // // std::cout << " *** head x: " << head_x << " head y: " << head_y << " head z: " << head_z << " ***" << std::endl;
         // // std::cout << " *** global mag: " << global_mag << std::endl;
         // // std::cout << " *** goal mag: " << goal_mag << std::endl;
