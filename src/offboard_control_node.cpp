@@ -124,6 +124,35 @@ bool isAtGoal()
 
 double head_diff()
 {
+    // double head_x,head_y,head_z, head_mag = 0.0;
+    // double theta = 0.0;
+    // double diff = 0.0;
+    // //bool turn = true;
+    // //std::cout << "TURNING!" << std::endl;
+    // // Determine Heading Vector (Quadrotor to Target)
+    // head_x = goal_x - global_x;
+    // head_y = goal_y - global_y;
+
+    // head_mag = sqrt(pow(head_x, 2.0) + pow(head_y, 2.0));
+
+    // theta = acos(head_x / head_mag);
+    // if (head_y < 0.0) theta *= -1.0;
+
+    // diff = fabs((fabs(yaw) - fabs(theta)));
+
+    // std::cout << "yaw: \t\t\t" << yaw << std::endl;
+    // std::cout << "required heading: \t" << theta << std::endl;
+    // std::cout << "difference: \t\t" << diff << std::endl;
+
+    // return diff;       
+}
+
+double turn_state()
+{
+    // how to decide direction of turn
+    // double diff = 0.0;
+
+    //diff = head_diff();
     double head_x,head_y,head_z, head_mag = 0.0;
     double theta = 0.0;
     double diff = 0.0;
@@ -138,23 +167,18 @@ double head_diff()
     theta = acos(head_x / head_mag);
     if (head_y < 0.0) theta *= -1.0;
 
-    diff = fabs((fabs(yaw) - fabs(theta)));
-
+    // calculate signed difference
+    diff = atan2(sin(theta - yaw), cos(theta - yaw));
     std::cout << "yaw: \t\t\t" << yaw << std::endl;
     std::cout << "required heading: \t" << theta << std::endl;
     std::cout << "difference: \t\t" << diff << std::endl;
 
-    return diff;       
-}
-
-double turn_state()
-{
-
-    double diff = 0.0;
-
-    diff = head_diff();
-
-    if (fabs(diff) > 0.08) return 0.1;
+    // decide quickest yaw direction
+    if (fabs(diff) > 0.08)
+    {
+        if (diff > 0.0) return 0.1;
+        else if (diff < 0.0) return -0.1; 
+    }    
     else return 0.0;
 
 }
@@ -162,7 +186,7 @@ double turn_state()
 double go_state()
 {
     // if heading not correct OR distance is less than 0.2, return 0
-    if (head_diff() > 0.08) return 0.0;
+    if (turn_state() != 0.0) return 0.0;
 
     // else move return 0.2
     else return 0.2; 
