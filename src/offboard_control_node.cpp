@@ -166,20 +166,6 @@ double turn_state()
 
 }
 
-//double path_find()
-//{
-    // Read Array numbers
-
-    // Perform Moving Average
-    //for (int i = 0; i < )
-
-    // Determine Corridor Orientation
-
-    // Compare with Goal Orientation - Pick Closest Corridor
-
-
-//}
-
 //  
 // double get_scan()
 // {
@@ -230,7 +216,6 @@ double pathfinder(double rng_a [], double dir)
     {
         // rng_ang[i] = rad2deg(yaw) - (89 - i);
         rng_ang[i] = convertYaw(rad2deg(yaw) + (89 - i));
-        //std::cout << i << " : " << rng_ang[i] << ", yaw: " << rad2deg(yaw) << std::endl; 
     }
 
     // std::cout << "\n*******************" << std::endl;
@@ -238,21 +223,6 @@ double pathfinder(double rng_a [], double dir)
     // std::cout << "n = 89 : " << rng_ang[89] << std::endl;
     // std::cout << "n = 179 : " << rng_ang[179] << std::endl;
     // std::cout << "*******************\n" << std::endl;  
-
-    // // Determine Heading Vector (Quadrotor to Target)
-    // head_x = goal_x - global_x;
-    // head_y = goal_y - global_y;
-
-    // head_mag = sqrt(pow(head_x, 2.0) + pow(head_y, 2.0));
-
-    // theta = acos(head_x / head_mag);
-    // if (head_y < 0.0) theta *= -1.0;
-
-    // // calculate signed difference
-    // diff = atan2(sin(theta - yaw), cos(theta - yaw)); 
-
-    // Find average after filtering out anything above 25
-    //float avg_n = accumulate(rng_a.begin(),rng_a.end(), 0) / rng_a.size();
 
     for (int i = 0; i < 180; i++)
     {
@@ -306,42 +276,15 @@ double pathfinder(double rng_a [], double dir)
                     path = temp;
                 }
 
+                // Debug Lines
+                // std::cout << "******************\n\nfinish : " << finish << " : " << rng_ang[i] << std::endl;
+                // std::cout << "angle for mid : " << temp << std::endl;
+                // std::cout << "dir : " << rad2deg(dir) << "\n\n^^^^^^^^^^^^^^^^^^^^" << std::endl;
 
-                std::cout << "******************\n\nfinish : " << finish << " : " << rng_ang[i] << std::endl;
-                std::cout << "angle for mid : " << temp << std::endl;
-                std::cout << "dir : " << rad2deg(dir) << "\n\n^^^^^^^^^^^^^^^^^^^^" << std::endl;
-
-
-                // temp = start + (finish - start) / 2.0;
-                // mid = ((mid > temp) ? temp:mid);
-
-                // if mid is 0, mid equals equation
-                // if mid is more than equation, mid equals equation
-                // else mid is mid
-
-                // TODO
-                // find rng_ang element with i
-                // find difference between rng_ang[i] and dir
-                //mid = (diff < fabs(rng_ang[i] - dir)) ? ;
-                // if (diff < fabs(rng_ang[i] - dir))
-                // {
-                //     diff = fabs(rng_ang[i] - dir);
-                //     mid = start + (finish - start) / 2.0;
-                //}
-                // if current diff is smaller than previous dirr, assign new value to mid
-                // mid = intermediate heading (middle of corridor)
-
-                
-
-                //j++;
-                // try and figure out how to translate mid to current heading (yaw)
-                //mid = ()
                 corr = false;
             }
         }
     }   
-
-    // std::cout << "path : " << path << std::endl;
 
     return path;    
 
@@ -352,7 +295,6 @@ int main(int argc, char **argv)
 {
 
     std::ofstream myFile;
-    //myFile.open("memes.txt");
     double diff = 0.0;
     double path;
     bool go = false;
@@ -371,10 +313,6 @@ int main(int argc, char **argv)
 
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(15.0);
-
-    // goal_x = global_x;
-    // goal_y = global_y;
-    // goal_z = global_z;
 
     // wait for connection to the simulator, and wait for ten packages to arrive
     while(ros::ok() && current_state.header.seq > 10)
