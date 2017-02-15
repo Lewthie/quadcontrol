@@ -10,8 +10,13 @@
 
 #include <ros/ros.h>
 #include <math.h>
+#include <vector>
+#include <fstream>
+#include <iostream>
+#include <numeric>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
@@ -36,16 +41,21 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-
+#define deg2rad(a) (a * (M_PI / 180.0))
+#define rad2deg(a) (a * (180.0 / M_PI))
 
 nav_msgs::Odometry current_state;
 geometry_msgs::Twist vel_setpoint;
 geometry_msgs::PoseStamped current_goal;
+sensor_msgs::LaserScan laser_scan;
 
 // bool goal_reached = true;
 // bool turning, go = false;
 
 double roll, pitch, yaw;
+// double range[720];
+//std::vector<double> range;
+double range[180];
 double goal_roll, goal_pitch, goal_yaw;
 double global_x,global_y,global_z;
 double goal_x, goal_y, goal_z;
@@ -69,7 +79,6 @@ void state_cb(const nav_msgs::Odometry::ConstPtr& msg)
 	global_x = current_state.pose.pose.position.x;
 	global_y = current_state.pose.pose.position.y;
 	global_z = current_state.pose.pose.position.z;
-		 
 	 
 	 
 }
@@ -108,6 +117,27 @@ void goal_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
      
 }
 
+void laser_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
+{
+    laser_scan = *msg;
+    
+    // this is dumb and inefficient; find a way to alter the msg so we don't have to do this
+    // min_ang, max_ang and increments (or whatever they're called) has to be changed from the msg
+    //range.clear();
+    int j = 0;
+    // 
+    for (int i = 179; i < 900; i = i + 4)
+    {
+        // range.push_back(laser_scan.ranges[i]);
+        range[j] = laser_scan.ranges[i]; 
+        j++;
+        // std::cout << "range[" << j << "] : " << range[j] << std::endl;
+    }
+
+    //range.assign(laser_scan.ranges);
+     
+}
+
 bool isAtGoal()
 {
 
@@ -136,10 +166,197 @@ double turn_state()
 
 }
 
+//double path_find()
+//{
+    // Read Array numbers
+
+    // Perform Moving Average
+    //for (int i = 0; i < )
+
+    // Determine Corridor Orientation
+
+    // Compare with Goal Orientation - Pick Closest Corridor
+
+
+//}
+
+//  
+// double get_scan()
+// {
+
+//     double rgOut[180];
+//     double min;
+
+//     for (int i = 0; i < 180; i++)
+//     {
+//         //min = yaw - (89 - i);
+//         rgOut[i] = (yaw * (180 / M_PI)) - (89 - i);
+//         //std::cout << i << " : " << rgOut[i] << ", yaw: " << yaw * 180/M_PI << std::endl; 
+//     }
+
+//     return 0.0;
+// }
+
+double convertYaw(double yaw)
+{
+    yaw = fmod(yaw + 180.0,360.0);
+    if (yaw < 0.0)
+        yaw += 360.0;
+    return yaw - 180.0;
+}
+
+double pathfinder(double rng_a [], double dir)
+{
+
+    // // Upgraded turn_state function. 
+
+    // double head_x,head_y,head_z, head_mag = 0.0;
+    // double theta = 0.0;
+    // double start, finish;
+    int j = 0;
+    double mv_avg;
+    double mid = 30;
+    double avg_den,sum, avg_n = 0.0;
+    double start, finish;
+    double diff = 100.0;
+    // std::vector<double> mid;
+    bool corr = false;
+
+    double rng_ang[180];
+    double min, temp, temp2, temp3, path;
+
+    // find world frame angles in scan range
+    for (int i = 0; i < 180; i++)
+    {
+        // rng_ang[i] = rad2deg(yaw) - (89 - i);
+        rng_ang[i] = convertYaw(rad2deg(yaw) + (89 - i));
+        //std::cout << i << " : " << rng_ang[i] << ", yaw: " << rad2deg(yaw) << std::endl; 
+    }
+
+    // std::cout << "\n*******************" << std::endl;
+    // std::cout << "n = 0 : " << rng_ang[0] << std::endl;
+    // std::cout << "n = 89 : " << rng_ang[89] << std::endl;
+    // std::cout << "n = 179 : " << rng_ang[179] << std::endl;
+    // std::cout << "*******************\n" << std::endl;  
+
+    // // Determine Heading Vector (Quadrotor to Target)
+    // head_x = goal_x - global_x;
+    // head_y = goal_y - global_y;
+
+    // head_mag = sqrt(pow(head_x, 2.0) + pow(head_y, 2.0));
+
+    // theta = acos(head_x / head_mag);
+    // if (head_y < 0.0) theta *= -1.0;
+
+    // // calculate signed difference
+    // diff = atan2(sin(theta - yaw), cos(theta - yaw)); 
+
+    // Find average after filtering out anything above 25
+    //float avg_n = accumulate(rng_a.begin(),rng_a.end(), 0) / rng_a.size();
+
+    for (int i = 0; i < 180; i++)
+    {
+        if (rng_a[i] < 25 && rng_a[i] > 0.1)
+        {
+            
+            sum += rng_a[i];
+            avg_den++;
+
+        }
+    }
+
+    avg_n = sum / avg_den;
+
+
+
+    // for (std::vector<double>::iterator it = rng_a.begin() ; it != rng_a.end(); ++it)
+    for (int i = 1; i < 179; i++)
+    {
+
+        mv_avg = (rng_a[i] + rng_a[i - 1] + rng_a[i + 1]) / 3.0;
+
+        if (rng_a[i] <= 0.1 || rng_a[i - 1] <= 0.1 || rng_a[i + 1] <= 0.1)
+        {
+            std::cout << "Range too close: Skids?" << std::endl;
+        }
+        else if (corr == false)
+        {
+            if (mv_avg > avg_n && rng_a[i - 1] < avg_n)
+            {
+                //start = rng_ang[i];
+                start = i;
+                corr = true;
+                std::cout << "start " << start << " : " << rng_ang[i] << "VVVVVVVVVVVVVVV" << std::endl;
+            }
+        }
+        else 
+        {
+            if (mv_avg < avg_n && rng_a[i - 1] > avg_n)
+            {
+                //finish = rng_ang[i];
+                finish = i;
+
+                mid = start + (finish - start) / 2.0;
+                temp = rng_ang[int (round(mid))];
+
+                // pick direction closest to corridor
+                if (fabs(rad2deg(dir) - temp) < diff)
+                {
+                    diff = fabs(rad2deg(dir) - temp);
+                    path = temp;
+                }
+
+
+                std::cout << "******************\n\nfinish : " << finish << " : " << rng_ang[i] << std::endl;
+                std::cout << "angle for mid : " << temp << std::endl;
+                std::cout << "dir : " << rad2deg(dir) << "\n\n^^^^^^^^^^^^^^^^^^^^" << std::endl;
+
+
+                // temp = start + (finish - start) / 2.0;
+                // mid = ((mid > temp) ? temp:mid);
+
+                // if mid is 0, mid equals equation
+                // if mid is more than equation, mid equals equation
+                // else mid is mid
+
+                // TODO
+                // find rng_ang element with i
+                // find difference between rng_ang[i] and dir
+                //mid = (diff < fabs(rng_ang[i] - dir)) ? ;
+                // if (diff < fabs(rng_ang[i] - dir))
+                // {
+                //     diff = fabs(rng_ang[i] - dir);
+                //     mid = start + (finish - start) / 2.0;
+                //}
+                // if current diff is smaller than previous dirr, assign new value to mid
+                // mid = intermediate heading (middle of corridor)
+
+                
+
+                //j++;
+                // try and figure out how to translate mid to current heading (yaw)
+                //mid = ()
+                corr = false;
+            }
+        }
+    }   
+
+    // std::cout << "path : " << path << std::endl;
+
+    return path;    
+
+
+}
+
 int main(int argc, char **argv)
 {
 
+    std::ofstream myFile;
+    //myFile.open("memes.txt");
     double diff = 0.0;
+    double path;
+    bool go = false;
+    int j = 0;
 
     ros::init(argc, argv, "offb_node");
     ros::NodeHandle nh;
@@ -147,6 +364,8 @@ int main(int argc, char **argv)
     ros::Subscriber nav_goal_sub = nh.subscribe<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10, goal_cb);
    	ros::Subscriber state_sub = nh.subscribe<nav_msgs::Odometry>("/ground_truth/state", 10, state_cb);
    	ros::Subscriber setpoints_sub = nh.subscribe<geometry_msgs::Twist>("/cmd_vel_setpoint", 10, setpoints_cb);
+    ros::Subscriber laser_sub = nh.subscribe<sensor_msgs::LaserScan>("/scan/", 10, laser_cb);
+
 
     ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
 
@@ -193,32 +412,93 @@ int main(int argc, char **argv)
                 
         }
 
+
+        // // Basic Pathfinding
+
+        // if (!isAtGoal())
+        // {
+        //     diff = turn_state();
+
+        //     if (fabs(diff) >= 0.08)
+        //     {
+        //         velx_cmd = 0.0;
+        //         wz_cmd =  (diff > 0.0) ? 0.1 : -0.1;
+        //     }
+        //     else
+        //     {
+
+        //         velx_cmd = 0.2;
+        //         wz_cmd = 0.0;
+        //     }  
+        // }
+        // else 
+        // {
+        //     velx_cmd = 0.0;
+        //     wz_cmd = 0.0;
+        // }
+
+        // Advanced Pathfinding
+
+        // if not at goal
         if (!isAtGoal())
         {
+
             diff = turn_state();
 
-            if (fabs(diff) >= 0.08)
+            // if go flag set
+            if (go && fabs(diff) < 0.08)
             {
-                velx_cmd = 0.0;
-                wz_cmd =  (diff > 0.0) ? 0.1 : -0.1;
-            }
-            else
-            {
+                // move forward slowly
                 velx_cmd = 0.2;
+                wz_cmd = 0.0;               
+            }
+            // else if diff between head and goal is too great
+            else if (fabs(diff) >= 0.08)
+            {
+                // turn head towards goal - stay in place
+                velx_cmd = 0.0;
+                wz_cmd = (diff > 0.0) ? 0.1 : -0.1;
+            }
+            // else if diff is small enough and counter expired 
+            else if (fabs(diff) < 0.08)
+            {
+                // set velocities to zero
+                velx_cmd = 0.0;
                 wz_cmd = 0.0;
-            }  
+
+                // read laser scan input
+                path = pathfinder(range, yaw + diff);
+
+                // function gives array of possible corridors
+
+                // translate array to angles in world frame
+
+                // select corridor with angle closest to heading - set as heading
+
+                // maybe set a go flag or something if forward scan value is safe
+            }
+
+
         }
-        else 
-        {
-            velx_cmd = 0.0;
-            wz_cmd = 0.0;
-        }
+
+
+
+
+        //double t = pathfinder(range);
+
+
 
         // Publish velocity msgs
         local_vel_pub.publish(vel);
 
 
         // *** DEBUG STUFF - DO NOT DELETE ***
+
+        // std::cout << "\n*******************" << std::endl;
+        // // std::cout << "path = " << path << std::endl;
+        // // std::cout << "direction = " << rad2deg(yaw + diff) << std::endl;
+        // std::cout << "yaw = " << rad2deg(yaw) << std::endl;
+        // std::cout << "*******************\n" << std::endl;
 
         // std::cout << " *** abs x: " << abs(goal_x - global_x) << " abs y: " << abs(goal_y - global_y) << " abs z: " << abs(goal_z - global_z) << " ***" <<std::endl;
         // std::cout << " *** heading = " << theta << std::endl;
@@ -229,6 +509,22 @@ int main(int argc, char **argv)
         // std::cout << " *** goal mag: " << goal_mag << std::endl;
         // std::cout << " *** dum mag: " << dum_mag << std::endl;
         // std::cout << isAtGoal() << std::endl;
+
+        //for (int i = 0; i < 300; i++)
+        //{
+        //    std::cout << " *** [" << i << "] : "  << range[i] << " metres. ***" << std::endl; 
+        //}
+
+        //j = 0;
+        // std::cout << "************** START ********************" << std::endl;
+        // for (std::vector<double>::iterator it = range.begin() ; it != range.end(); ++it)
+        // {
+        //     std::cout << *it << " metres. ***" << std::endl;
+        //     //j++; 
+        // }
+        // std::cout << "******************* END ********************" << std::endl;
+        //j = 0;
+        //myFile.close();
 
         // *** DEBUG STUFF - DO NOT DELETE ***        
 
