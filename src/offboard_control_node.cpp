@@ -353,74 +353,27 @@ int main(int argc, char **argv)
 
         // // Basic Pathfinding
 
-        // if (!isAtGoal())
-        // {
-        //     diff = turn_state();
-
-        //     if (fabs(diff) >= 0.08)
-        //     {
-        //         velx_cmd = 0.0;
-        //         wz_cmd =  (diff > 0.0) ? 0.1 : -0.1;
-        //     }
-        //     else
-        //     {
-
-        //         velx_cmd = 0.2;
-        //         wz_cmd = 0.0;
-        //     }  
-        // }
-        // else 
-        // {
-        //     velx_cmd = 0.0;
-        //     wz_cmd = 0.0;
-        // }
-
-        // Advanced Pathfinding
-
-        // if not at goal
         if (!isAtGoal())
         {
-
             diff = turn_state();
 
-            // if go flag set
-            if (go && fabs(diff) < 0.08)
+            if (fabs(diff) >= 0.08)
             {
-                // move forward slowly
+                velx_cmd = 0.0;
+                wz_cmd =  (diff > 0.0) ? 0.1 : -0.1;
+            }
+            else
+            {
+
                 velx_cmd = 0.2;
-                wz_cmd = 0.0;               
-            }
-            // else if diff between head and goal is too great
-            else if (fabs(diff) >= 0.08)
-            {
-                // turn head towards goal - stay in place
-                velx_cmd = 0.0;
-                wz_cmd = (diff > 0.0) ? 0.1 : -0.1;
-            }
-            // else if diff is small enough and counter expired 
-            else if (fabs(diff) < 0.08)
-            {
-                // set velocities to zero
-                velx_cmd = 0.0;
                 wz_cmd = 0.0;
-
-                // read laser scan input
-                path = pathfinder(range, yaw + diff);
-
-                // function gives array of possible corridors
-
-                // translate array to angles in world frame
-
-                // select corridor with angle closest to heading - set as heading
-
-                // maybe set a go flag or something if forward scan value is safe
-            }
-
-
+            }  
         }
-
-
-
+        else 
+        {
+            velx_cmd = 0.0;
+            wz_cmd = 0.0;
+        }
 
         //double t = pathfinder(range);
 
