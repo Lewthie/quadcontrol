@@ -43,6 +43,7 @@
 
 #define deg2rad(a) (a * (M_PI / 180.0))
 #define rad2deg(a) (a * (180.0 / M_PI))
+#define sgn_diff(a,b) atan2(sin(a - b), cos(a - b))
 
 nav_msgs::Odometry current_state;
 geometry_msgs::Twist vel_setpoint;
@@ -61,6 +62,7 @@ double global_x,global_y,global_z;
 double goal_x, goal_y, goal_z;
 double velx_cmd, vely_cmd,velz_cmd;
 double wx_cmd, wy_cmd, wz_cmd;
+double old_goal_x, old_goal_y;
 std::string base_link_frame_, base_stabilized_frame_, world_frame_;
 
 ros::ServiceClient motor_enable_service_;
@@ -138,10 +140,20 @@ void laser_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
      
 }
 
-bool isAtGoal()
-{
+// bool isAtGoal()
+// {
+//     return (sqrt(pow(goal_x - global_x, 2.0) + pow(goal_y - global_y, 2.0)) < 0.2);    
+// }
 
-    return (sqrt(pow(goal_x - global_x, 2.0) + pow(goal_y - global_y, 2.0)) < 0.2);    
+double distToGoal()
+{
+    return sqrt(pow(goal_x - global_x, 2.0) + pow(goal_y - global_y, 2.0));
+}
+
+bool goalSet()
+{
+    //std::cout << "New Goal is Set" << std::endl;
+    return (goal_x != old_goal_x && goal_y != old_goal_y);
 }
 
 double turn_state()
@@ -159,10 +171,11 @@ double turn_state()
     head_mag = sqrt(pow(head_x, 2.0) + pow(head_y, 2.0));
 
     theta = acos(head_x / head_mag);
-    if (head_y < 0.0) theta *= -1.0;
+    if (head_y < 0.0) theta *= -1.0; 
 
     // calculate signed difference
-    return atan2(sin(theta - yaw), cos(theta - yaw)); 
+    // return atan2(sin(theta - yaw), cos(theta - yaw));
+    return sgn_diff(theta, yaw);
 
 }
 
@@ -245,18 +258,18 @@ double pathfinder(double rng_a [], double dir)
 
         mv_avg = (rng_a[i] + rng_a[i - 1] + rng_a[i + 1]) / 3.0;
 
-        if (rng_a[i] <= 0.1 || rng_a[i - 1] <= 0.1 || rng_a[i + 1] <= 0.1)
-        {
-            std::cout << "Range too close: Skids?" << std::endl;
-        }
-        else if (corr == false)
+        // if (rng_a[i] <= 0.1 || rng_a[i - 1] <= 0.1 || rng_a[i + 1] <= 0.1)
+        // {
+        //     std::cout << "Range too close: Skids?" << std::endl;
+        // }
+        if (corr == false)
         {
             if (mv_avg > avg_n && rng_a[i - 1] < avg_n)
             {
                 //start = rng_ang[i];
                 start = i;
                 corr = true;
-                std::cout << "start " << start << " : " << rng_ang[i] << "VVVVVVVVVVVVVVV" << std::endl;
+                // std::cout << "start " << start << " : " << rng_ang[i] << "VVVVVVVVVVVVVVV" << std::endl;
             }
         }
         else 
@@ -286,7 +299,7 @@ double pathfinder(double rng_a [], double dir)
         }
     }   
 
-    return path;    
+    return deg2rad(path);    
 
 
 }
@@ -296,8 +309,9 @@ int main(int argc, char **argv)
 
     std::ofstream myFile;
     double diff = 0.0;
-    double path;
+    double path_way;
     bool go = false;
+    bool centre = false;
     int j = 0;
 
     ros::init(argc, argv, "offb_node");
@@ -349,82 +363,79 @@ int main(int argc, char **argv)
             vel.angular.z = wz_cmd;// - yaw ;
                 
         }
+   
 
 
-        // // Basic Pathfinding
+        // Pathfinding **************************************************************
 
-        // if (!isAtGoal())
-        // {
-        //     diff = turn_state();
+        // Fix this fucking shit. Nav algorithm should be focus for tomorrow (Monday)
+        diff = turn_state();
 
-        //     if (fabs(diff) >= 0.08)
-        //     {
-        //         velx_cmd = 0.0;
-        //         wz_cmd =  (diff > 0.0) ? 0.1 : -0.1;
-        //     }
-        //     else
-        //     {
-
-        //         velx_cmd = 0.2;
-        //         wz_cmd = 0.0;
-        //     }  
-        // }
-        // else 
-        // {
-        //     velx_cmd = 0.0;
-        //     wz_cmd = 0.0;
-        // }
-
-        // Advanced Pathfinding
-
-        // if not at goal
-        if (!isAtGoal())
+        if (goalSet())
         {
-
-            diff = turn_state();
-
-            // if go flag set
-            if (go && fabs(diff) < 0.08)
+            centre = false;
+            std::cout << "New Goal Set!" << std::endl;
+        }
+        else if (!centre)
+        {
+            if (fabs(diff) >= 0.08)
             {
-                // move forward slowly
-                velx_cmd = 0.2;
-                wz_cmd = 0.0;               
-            }
-            // else if diff between head and goal is too great
-            else if (fabs(diff) >= 0.08)
-            {
-                // turn head towards goal - stay in place
                 velx_cmd = 0.0;
                 wz_cmd = (diff > 0.0) ? 0.1 : -0.1;
             }
-            // else if diff is small enough and counter expired 
-            else if (fabs(diff) < 0.08)
+            else
             {
-                // set velocities to zero
                 velx_cmd = 0.0;
                 wz_cmd = 0.0;
-
-                // read laser scan input
-                path = pathfinder(range, yaw + diff);
-
-                // function gives array of possible corridors
-
-                // translate array to angles in world frame
-
-                // select corridor with angle closest to heading - set as heading
-
-                // maybe set a go flag or something if forward scan value is safe
+                centre = true;
+                std::cout << "Centred on Goal Coordinates" << std::endl;
             }
+        }
+        else if (distToGoal() > 0.2 && centre)
+        {
+            if (range[89] >= distToGoal())
+            {
+                
+                std::cout << "Forward path unobstructed - Proceed to Goal" << std::endl;
+                velx_cmd = 0.2;
+                wz_cmd = 0.0;
 
+            }
+            else
+            {
+                std::cout << "Obstacles Detected - Using Pathfinder..." << std::endl;
+                path_way = pathfinder(range, yaw + diff);
 
+                if (fabs(sgn_diff(path_way,yaw)) >= 0.08)
+                //if (fabs(diff) >= 0.08)
+                {
+                    std::cout << "Turning to chosen corridor..." << rad2deg(fabs(sgn_diff(path_way,yaw))) << std::endl;
+                    velx_cmd = 0.0;
+                    wz_cmd = (sgn_diff(path_way,yaw) > 0.0) ? 0.1 : -0.1;
+                    //wz_cmd = (diff > 0.0) ? 0.1 : -0.1;
+                }
+                else
+                {
+                    std::cout << "Advancing..." << std::endl;
+                    velx_cmd = 0.2;
+                    wz_cmd = 0.0;
+                }
+            }
+  
+        }
+        else if (distToGoal() < 0.2)
+        {
+            std::cout << "Standby..." << std::endl;
+            velx_cmd = 0.0;
+            wz_cmd = 0.0;
         }
 
+        // store goal x and y in a temp variable
 
+        old_goal_x = goal_x;
+        old_goal_y = goal_y;
 
-
-        //double t = pathfinder(range);
-
-
+        //***********************************************************************************
 
         // Publish velocity msgs
         local_vel_pub.publish(vel);
@@ -433,9 +444,9 @@ int main(int argc, char **argv)
         // *** DEBUG STUFF - DO NOT DELETE ***
 
         // std::cout << "\n*******************" << std::endl;
-        // // std::cout << "path = " << path << std::endl;
+        // std::cout << "path = " << rad2deg(sgn_diff(path_way, yaw)) << std::endl;
         // // std::cout << "direction = " << rad2deg(yaw + diff) << std::endl;
-        // std::cout << "yaw = " << rad2deg(yaw) << std::endl;
+        // std::cout << "diff = " << convertYaw(rad2deg(diff)) << std::endl;
         // std::cout << "*******************\n" << std::endl;
 
         // std::cout << " *** abs x: " << abs(goal_x - global_x) << " abs y: " << abs(goal_y - global_y) << " abs z: " << abs(goal_z - global_z) << " ***" <<std::endl;
