@@ -199,14 +199,14 @@ double turn_state()
 //     return 0.0;
 // }
 
-double convertYaw(double yaw_in)
-{
-    // yaw_in = fmod(yaw_in + 180.0,360.0);
-    // if (yaw_in < 0.0)
-    //     yaw_in += 360.0;
-    // return yaw_in - 180.0;
-    return yaw_in;
-}
+// double convertYaw(double yaw_in)
+// {
+//     // yaw_in = fmod(yaw_in + 180.0,360.0);
+//     // if (yaw_in < 0.0)
+//     //     yaw_in += 360.0;
+//     // return yaw_in - 180.0;
+//     return yaw_in;
+// }
 
 double pathfinder(double rng_a [], double dir)
 {
@@ -446,7 +446,7 @@ int main(int argc, char **argv)
         std::cout << "\n*******************" << std::endl;
         std::cout << "path = " << rad2deg(sgn_diff(path_way, yaw)) << std::endl;
         std::cout << "direction = " << rad2deg(yaw + diff) << std::endl;
-        std::cout << "converted yaw = " << convertYaw(rad2deg(yaw)) << std::endl;
+        // std::cout << "converted yaw = " << convertYaw(rad2deg(yaw)) << std::endl;
         std::cout << "yaw = " << rad2deg(yaw) << std::endl;
         std::cout << "*******************\n" << std::endl;
 
