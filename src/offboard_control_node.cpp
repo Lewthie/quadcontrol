@@ -53,6 +53,9 @@ sensor_msgs::LaserScan laser_scan;
 // bool goal_reached = true;
 // bool turning, go = false;
 
+// debug outputs for corridors
+
+
 double roll, pitch, yaw;
 // double range[720];
 //std::vector<double> range;
@@ -196,12 +199,13 @@ double turn_state()
 //     return 0.0;
 // }
 
-double convertYaw(double yaw)
+double convertYaw(double yaw_in)
 {
-    yaw = fmod(yaw + 180.0,360.0);
-    if (yaw < 0.0)
-        yaw += 360.0;
-    return yaw - 180.0;
+    // yaw_in = fmod(yaw_in + 180.0,360.0);
+    // if (yaw_in < 0.0)
+    //     yaw_in += 360.0;
+    // return yaw_in - 180.0;
+    return yaw_in;
 }
 
 double pathfinder(double rng_a [], double dir)
@@ -228,14 +232,9 @@ double pathfinder(double rng_a [], double dir)
     for (int i = 0; i < 180; i++)
     {
         // rng_ang[i] = rad2deg(yaw) - (89 - i);
-        rng_ang[i] = convertYaw(rad2deg(yaw) + (89 - i));
+        // rng_ang[i] = convertYaw(rad2deg(yaw) + (89 - i));
+        rng_ang[i] = rad2deg(yaw) + (89 - i);
     }
-
-    // std::cout << "\n*******************" << std::endl;
-    // std::cout << "n = 0 : " << rng_ang[0] << std::endl;
-    // std::cout << "n = 89 : " << rng_ang[89] << std::endl;
-    // std::cout << "n = 179 : " << rng_ang[179] << std::endl;
-    // std::cout << "*******************\n" << std::endl;  
 
     for (int i = 0; i < 180; i++)
     {
@@ -248,20 +247,18 @@ double pathfinder(double rng_a [], double dir)
         }
     }
 
+    // determine average scan value
+    // this value will be used to determine the presence of corridors
     avg_n = sum / avg_den;
 
-
-
-    // for (std::vector<double>::iterator it = rng_a.begin() ; it != rng_a.end(); ++it)
+    // iterate through scanned range
     for (int i = 1; i < 179; i++)
     {
 
+        // calculate moving average 
         mv_avg = (rng_a[i] + rng_a[i - 1] + rng_a[i + 1]) / 3.0;
 
-        // if (rng_a[i] <= 0.1 || rng_a[i - 1] <= 0.1 || rng_a[i + 1] <= 0.1)
-        // {
-        //     std::cout << "Range too close: Skids?" << std::endl;
-        // }
+        // determine position of corridors -- maybe handy to have debug outputs for corridor positions
         if (corr == false)
         {
             if (mv_avg > avg_n && rng_a[i - 1] < avg_n)
@@ -317,13 +314,14 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "offb_node");
     ros::NodeHandle nh;
 
-    ros::Subscriber nav_goal_sub = nh.subscribe<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10, goal_cb);
-   	ros::Subscriber state_sub = nh.subscribe<nav_msgs::Odometry>("/ground_truth/state", 10, state_cb);
-   	ros::Subscriber setpoints_sub = nh.subscribe<geometry_msgs::Twist>("/cmd_vel_setpoint", 10, setpoints_cb);
-    ros::Subscriber laser_sub = nh.subscribe<sensor_msgs::LaserScan>("/scan/", 10, laser_cb);
+    // Subscribe to relevant topics
+    ros::Subscriber nav_goal_sub = nh.subscribe<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10, goal_cb); // nav goal
+   	ros::Subscriber state_sub = nh.subscribe<nav_msgs::Odometry>("/ground_truth/state", 10, state_cb);              // ground truth pos
+   	ros::Subscriber setpoints_sub = nh.subscribe<geometry_msgs::Twist>("/cmd_vel_setpoint", 10, setpoints_cb);      // velocity
+    ros::Subscriber laser_sub = nh.subscribe<sensor_msgs::LaserScan>("/scan/", 10, laser_cb);                       // laser scan readings
 
-
-    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+    // Publisher
+    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);                               // velocity commands
 
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(15.0);
@@ -368,15 +366,17 @@ int main(int argc, char **argv)
 
         // Pathfinding **************************************************************
 
-        // Fix this fucking shit. Nav algorithm should be focus for tomorrow (Monday)
+        // Fix this. Nav algorithm should be focus.
+
+        // calculate difference between current heading (yaw) and goal heading
         diff = turn_state();
 
-        if (goalSet())
+        if (goalSet()) // find if new goal set
         {
             centre = false;
             std::cout << "New Goal Set!" << std::endl;
         }
-        else if (!centre)
+        else if (!centre) // otherwise, check if facing goal heading
         {
             if (fabs(diff) >= 0.08)
             {
@@ -391,9 +391,9 @@ int main(int argc, char **argv)
                 std::cout << "Centred on Goal Coordinates" << std::endl;
             }
         }
-        else if (distToGoal() > 0.2 && centre)
+        else if (distToGoal() > 0.2 && centre) // if facing goal heading, move forward
         {
-            if (range[89] >= distToGoal())
+            if (range[89] >= distToGoal()) // if no obstacles, proceed
             {
                 
                 std::cout << "Forward path unobstructed - Proceed to Goal" << std::endl;
@@ -401,7 +401,7 @@ int main(int argc, char **argv)
                 wz_cmd = 0.0;
 
             }
-            else
+            else // else, use pathfinder function
             {
                 std::cout << "Obstacles Detected - Using Pathfinder..." << std::endl;
                 path_way = pathfinder(range, yaw + diff);
@@ -409,7 +409,8 @@ int main(int argc, char **argv)
                 if (fabs(sgn_diff(path_way,yaw)) >= 0.08)
                 //if (fabs(diff) >= 0.08)
                 {
-                    std::cout << "Turning to chosen corridor..." << rad2deg(fabs(sgn_diff(path_way,yaw))) << std::endl;
+                    // std::cout << "Turning; Current: " <<  << ". Turning to " << rad2deg(fabs(sgn_diff(path_way,yaw))) << std::endl;
+                    std::cout << "Turning; Current: " << rad2deg(yaw) << ". Turning to " << rad2deg(path_way) << std::endl;
                     velx_cmd = 0.0;
                     wz_cmd = (sgn_diff(path_way,yaw) > 0.0) ? 0.1 : -0.1;
                     //wz_cmd = (diff > 0.0) ? 0.1 : -0.1;
@@ -423,7 +424,7 @@ int main(int argc, char **argv)
             }
   
         }
-        else if (distToGoal() < 0.2)
+        else if (distToGoal() < 0.2) // if goal reached, idle
         {
             std::cout << "Standby..." << std::endl;
             velx_cmd = 0.0;
@@ -431,7 +432,6 @@ int main(int argc, char **argv)
         }
 
         // store goal x and y in a temp variable
-
         old_goal_x = goal_x;
         old_goal_y = goal_y;
 
@@ -443,11 +443,12 @@ int main(int argc, char **argv)
 
         // *** DEBUG STUFF - DO NOT DELETE ***
 
-        // std::cout << "\n*******************" << std::endl;
-        // std::cout << "path = " << rad2deg(sgn_diff(path_way, yaw)) << std::endl;
-        // // std::cout << "direction = " << rad2deg(yaw + diff) << std::endl;
-        // std::cout << "diff = " << convertYaw(rad2deg(diff)) << std::endl;
-        // std::cout << "*******************\n" << std::endl;
+        std::cout << "\n*******************" << std::endl;
+        std::cout << "path = " << rad2deg(sgn_diff(path_way, yaw)) << std::endl;
+        std::cout << "direction = " << rad2deg(yaw + diff) << std::endl;
+        std::cout << "converted yaw = " << convertYaw(rad2deg(yaw)) << std::endl;
+        std::cout << "yaw = " << rad2deg(yaw) << std::endl;
+        std::cout << "*******************\n" << std::endl;
 
         // std::cout << " *** abs x: " << abs(goal_x - global_x) << " abs y: " << abs(goal_y - global_y) << " abs z: " << abs(goal_z - global_z) << " ***" <<std::endl;
         // std::cout << " *** heading = " << theta << std::endl;
